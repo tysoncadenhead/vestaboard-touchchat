@@ -1,31 +1,47 @@
 import { http } from "@ampt/sdk";
-import express, { Router } from "express";
+import express from "express";
+import cors from "cors";
+import bodyParser from "body-parser";
+import fetch from "node-fetch";
 
 const app = express();
 
-const api = Router();
+app.use(cors());
+app.use(bodyParser.json());
 
-api.get("/hello", (req, res) => {
-  return res.status(200).send({ message: "Hello from the public api!" });
-});
-
-api.get("/greet/:name", (req, res) => {
-  const { name } = req.params;
-
-  if (!name) {
-    return res.status(400).send({ message: "Missing route param for `name`!" });
-  }
-
-  return res.status(200).send({ message: `Hello ${name}!` });
-});
-
-api.post("/submit", async (req, res) => {
-  return res.status(200).send({
-    body: req.body,
-    message: "You just posted data",
+app.get("/", (_, res) => {
+  res.send({
+    success: true,
   });
 });
 
-app.use("/api", api);
+app.post("/", async (req, res) => {
+  console.log("hooked2", req.body);
+  if (req.body.token !== process.env.TOKEN) {
+    return res.status(401).send({
+      message: "Unauthorized",
+    });
+  }
+
+  await fetch("https://rw.vestaboard.com/", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Vestaboard-Read-Write-Key": process.env.VESTABOARD_KEY,
+    },
+    body: JSON.stringify({
+      text: req.body.text,
+    }),
+  })
+    .then((res) => res.json())
+    .then((res) => {
+      console.log(res);
+    })
+    .catch((err) => console.log(err));
+
+  res.send({
+    success: true,
+  });
+});
 
 http.node.use(app);
